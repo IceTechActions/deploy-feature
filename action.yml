@@ -50,8 +50,8 @@ runs:
         RESULT=$(az deployment group create \
           --name "deploy-${{ inputs.feature_name }}-$(date +%Y%m%d-%H%M%S)" \
           --resource-group "${{ inputs.resource_group }}" \
-          --template-file main.bicep \
-          --parameters parameters/feature-environment.bicepparam \
+          --template-file "${{ github.action_path }}/main.bicep" \
+          --parameters "${{ github.action_path }}/parameters/feature-environment.bicepparam" \
           --parameters \
             name="${{ inputs.feature_name }}" \
             registryServer="${{ inputs.registry_server }}" \
