@@ -1,0 +1,70 @@
+name: Deploy Feature Environment
+description: >
+  Deploy Container Apps, HttpRouteConfig, and Front Door resources for a feature
+  environment using main.bicep. Requires an active Azure CLI session.
+
+inputs:
+  feature_name:
+    description: Feature environment name (e.g. feature-1234)
+    required: true
+  resource_group:
+    description: Azure resource group for the deployment
+    required: true
+  registry_server:
+    description: Container registry server URL (e.g. niscontainers.azurecr.io)
+    required: true
+  nordic_image_tag:
+    description: Nordic container image tag
+    required: true
+  worker_image_tag:
+    description: Worker container image tag
+    required: true
+  pr_id:
+    description: Pull request number (used for App Configuration label)
+    required: true
+  waf_policy_id:
+    description: Resource ID of the WAF policy to associate
+    required: true
+  dns_zone_resource_group:
+    description: Resource group containing the nisportal.com DNS zone
+    required: true
+  storage_account_access_key:
+    description: Access key for the shared nisacistorage storage account
+    required: true
+
+outputs:
+  feature_url:
+    description: Full HTTPS URL of the deployed feature environment
+    value: ${{ steps.deploy.outputs.feature_url }}
+  fd_hostname:
+    description: Front Door endpoint hostname (without https://) — pass to create-dns-cname
+    value: ${{ steps.deploy.outputs.fd_hostname }}
+
+runs:
+  using: composite
+  steps:
+    - name: Deploy to Azure
+      id: deploy
+      shell: bash
+      run: |
+        RESULT=$(az deployment group create \
+          --name "deploy-${{ inputs.feature_name }}-$(date +%Y%m%d-%H%M%S)" \
+          --resource-group "${{ inputs.resource_group }}" \
+          --template-file main.bicep \
+          --parameters parameters/feature-environment.bicepparam \
+          --parameters \
+            name="${{ inputs.feature_name }}" \
+            registryServer="${{ inputs.registry_server }}" \
+            nordicContainerImageName="${{ inputs.registry_server }}/nordic" \
+            nordicContainerImageTag="${{ inputs.nordic_image_tag }}" \
+            workerContainerImageName="${{ inputs.registry_server }}/worker" \
+            workerContainerImageTag="${{ inputs.worker_image_tag }}" \
+            appConfigLabel="Feature-${{ inputs.pr_id }}" \
+            storageAccountAccessKey="${{ inputs.storage_account_access_key }}" \
+            wafPolicyId="${{ inputs.waf_policy_id }}" \
+            dnsZoneResourceGroup="${{ inputs.dns_zone_resource_group }}" \
+          --query 'properties.outputs' -o json)
+
+        FD_URL=$(echo "$RESULT" | jq -r '.frontDoorUrl.value' | sed 's|https://||')
+        echo "fd_hostname=$FD_URL" >> "$GITHUB_OUTPUT"
+        echo "feature_url=$(echo "$RESULT" | jq -r '.featureUrl.value')" >> "$GITHUB_OUTPUT"
