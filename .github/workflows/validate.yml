@@ -1,0 +1,15 @@
+name: Validate Bicep
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: IceTechActions/validate-bicep@v1
+        # bicep_root defaults to ${{ github.workspace }};
+        # finds main.bicep and modules/ at the root of this action repo
