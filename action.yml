@@ -28,9 +28,6 @@ inputs:
   dns_zone_resource_group:
     description: Resource group containing the nisportal.com DNS zone
     required: true
-  storage_account_access_key:
-    description: Access key for the shared nisacistorage storage account
-    required: true
 
 outputs:
   feature_url:
@@ -47,23 +44,7 @@ runs:
       id: deploy
       shell: bash
       run: |
-        RESULT=$(az deployment group create \
-          --name "deploy-${{ inputs.feature_name }}-$(date +%Y%m%d-%H%M%S)" \
-          --resource-group "${{ inputs.resource_group }}" \
-          --template-file "${{ github.action_path }}/main.bicep" \
-          --parameters "${{ github.action_path }}/parameters/feature-environment.bicepparam" \
-          --parameters \
-            name="${{ inputs.feature_name }}" \
-            registryServer="${{ inputs.registry_server }}" \
-            nordicContainerImageName="${{ inputs.registry_server }}/nordic" \
-            nordicContainerImageTag="${{ inputs.nordic_image_tag }}" \
-            workerContainerImageName="${{ inputs.registry_server }}/worker" \
-            workerContainerImageTag="${{ inputs.worker_image_tag }}" \
-            appConfigLabel="Feature-${{ inputs.pr_id }}" \
-            storageAccountAccessKey="${{ inputs.storage_account_access_key }}" \
-            wafPolicyId="${{ inputs.waf_policy_id }}" \
-            dnsZoneResourceGroup="${{ inputs.dns_zone_resource_group }}" \
-          --query 'properties.outputs' -o json)
+        RESULT=$(az deployment group create           --name "deploy-${{ inputs.feature_name }}-$(date +%Y%m%d-%H%M%S)"           --resource-group "${{ inputs.resource_group }}"           --template-file "${{ github.action_path }}/main.bicep"           --parameters "${{ github.action_path }}/parameters/feature-environment.bicepparam"           --parameters             name="${{ inputs.feature_name }}"             registryServer="${{ inputs.registry_server }}"             nordicContainerImageName="${{ inputs.registry_server }}/nordic"             nordicContainerImageTag="${{ inputs.nordic_image_tag }}"             workerContainerImageName="${{ inputs.registry_server }}/worker"             workerContainerImageTag="${{ inputs.worker_image_tag }}"             appConfigLabel="Feature-${{ inputs.pr_id }}"             wafPolicyId="${{ inputs.waf_policy_id }}"             dnsZoneResourceGroup="${{ inputs.dns_zone_resource_group }}"           --query 'properties.outputs' -o json)
 
         FD_URL=$(echo "$RESULT" | jq -r '.frontDoorUrl.value' | sed 's|https://||')
         echo "fd_hostname=$FD_URL" >> "$GITHUB_OUTPUT"
