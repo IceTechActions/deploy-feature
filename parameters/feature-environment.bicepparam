@@ -35,9 +35,6 @@ param userManagedIdentityResourceGroup = 'nc-internal-testops'
 param appConfigLabel = 'Feature-0000'
 param appConfigName = 'nis-developers-aac'
 
-// ── Storage ───────────────────────────────────────────────────────────────────
-param storageAccountAccessKey = ''
-
 // ── Elasticsearch ─────────────────────────────────────────────────────────────
 param useElastic8 = true
 param elastic8Endpoint = 'https://nis-virt-esdata-0.nisportal.com:9200'
