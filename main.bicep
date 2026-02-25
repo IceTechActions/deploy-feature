@@ -84,11 +84,8 @@ param wafPolicyId string
 @description('Resource group containing the nisportal.com DNS zone.')
 param dnsZoneResourceGroup string
 
-@description('Custom domain base for feature environments (used to construct hostnames).')
-param customDomainBase string = 'cust.nisportal.com'
-
-@description('Name of the Azure DNS zone resource (e.g. "nisportal.com"). Note: cust.nisportal.com is a record within this zone, not a separate zone resource.')
-param dnsZoneName string = 'nisportal.com'
+@description('Name of the Azure DNS zone resource (e.g. "cust.nisportal.com"). Used both to reference the DNS zone and to construct feature hostnames.')
+param dnsZoneName string = 'cust.nisportal.com'
 
 // Derived container image references
 var nordicContainerImage = '${nordicContainerImageName}:${nordicContainerImageTag}'
@@ -485,9 +482,9 @@ resource fdOrigin 'Microsoft.Cdn/profiles/originGroups/origins@2025-06-01' = {
 // azureDnsZone enables automatic CNAME validation and managed certificate provisioning
 resource fdCustomDomain 'Microsoft.Cdn/profiles/customDomains@2025-06-01' = {
   parent: frontDoor
-  name: replace('${name}-${customDomainBase}', '.', '-')
+  name: replace('${name}-${dnsZoneName}', '.', '-')
   properties: {
-    hostName: '${name}.${customDomainBase}'
+    hostName: '${name}.${dnsZoneName}'
     tlsSettings: {
       certificateType: 'ManagedCertificate'
       minimumTlsVersion: 'TLS12'
@@ -543,7 +540,7 @@ resource fdSecurityPolicy 'Microsoft.Cdn/profiles/securityPolicies@2025-06-01' =
 // ── Outputs ───────────────────────────────────────────────────────────────────
 
 // Primary URL via Front Door with custom domain
-output featureUrl string = 'https://${name}.${customDomainBase}'
+output featureUrl string = 'https://${name}.${dnsZoneName}'
 
 // Front Door default URL (usable before DNS CNAME is created)
 output frontDoorUrl string = 'https://${fdEndpoint.properties.hostName}'
