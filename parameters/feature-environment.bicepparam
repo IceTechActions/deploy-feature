@@ -50,5 +50,4 @@ param hasCustomJwtSecret = false
 param frontDoorName = 'fd-nisportal'
 param wafPolicyId = ''
 param dnsZoneResourceGroup = ''
-param customDomainBase = 'cust.nisportal.com'
 param dnsZoneName = 'cust.nisportal.com'
