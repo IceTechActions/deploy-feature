@@ -87,8 +87,8 @@ param dnsZoneResourceGroup string
 @description('Custom domain base for feature environments (used to construct hostnames).')
 param customDomainBase string = 'cust.nisportal.com'
 
-@description('Name of the Azure DNS zone resource (e.g. "nisportal.com"). Note: cust.nisportal.com is a record within this zone, not a separate zone resource.')
-param dnsZoneName string = 'nisportal.com'
+@description('Name of the Azure DNS zone resource (e.g. "cust.nisportal.com"). Feature records are created relative to this zone.')
+param dnsZoneName string = 'cust.nisportal.com'
 
 // Derived container image references
 var nordicContainerImage = '${nordicContainerImageName}:${nordicContainerImageTag}'
