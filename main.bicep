@@ -54,10 +54,6 @@ param appConfigLabel string
 @description('The name of the App Configuration resource.')
 param appConfigName string
 
-@secure()
-@description('The access key for the shared nisacistorage storage account.')
-param storageAccountAccessKey string
-
 @description('Flag to indicate if Elastic 8 is used.')
 param useElastic8 bool
 
