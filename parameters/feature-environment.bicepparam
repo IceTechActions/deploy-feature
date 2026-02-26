@@ -30,6 +30,8 @@ param userManagedIdentityName = ''
 param userManagedIdentityResourceGroup = ''
 
 // ── App Configuration ─────────────────────────────────────────────────────────
+// appConfigLabel is set at deploy time to "Feature-{pr_id}" (derived from the
+// feature environment name). Override via --parameters appConfigLabel="Feature-{pr_id}".
 param appConfigLabel = 'Feature-0000'
 // Override via action input app_config_name (GitHub var: AZURE_APP_CONFIG_NAME).
 param appConfigName = ''
