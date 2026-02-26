@@ -79,9 +79,9 @@ runs:
           STATE=$(az containerapp env show \
             --name "$ENV_NAME" \
             --resource-group "$RG" \
-            --query "properties.provisioningState" -o tsv)
-          echo "  [$i/20] provisioningState: $STATE"
-          if [ "$STATE" = "Succeeded" ]; then
+            --query "properties.runningStatus" -o tsv)
+          echo "  [$i/20] runningStatus: $STATE"
+          if [ "$STATE" = "Running" ]; then
             echo "Environment is ready."
             exit 0
           fi
