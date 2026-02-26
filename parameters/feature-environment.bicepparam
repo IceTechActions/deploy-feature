@@ -3,14 +3,20 @@
 // ============================================================
 // Used by main.bicep to deploy a feature environment.
 //
-// In CI/CD, most values are overridden via --parameters on the CLI:
-//   az deployment group create \
-//     --resource-group $RESOURCE_GROUP \
-//     --template-file main.bicep \
-//     --parameters parameters/feature-environment.bicepparam \
-//     --parameters name="feature-1234" \
-//                  nordicContainerImageTag="25.10.0-feature-1234" \
-//                  workerContainerImageTag="25.10.0-feature-1234"
+// The following parameters have NO defaults here and MUST be supplied
+// as inputs to the deploy-feature action (which passes them via --parameters):
+//
+//   userManagedIdentityName        (action input: user_managed_identity_name)
+//   userManagedIdentityResourceGroup (action input: user_managed_identity_resource_group)
+//   appConfigName                  (action input: app_config_name)
+//   useElastic8                    (action input: use_elastic8)
+//   elastic8Endpoint               (action input: elastic8_endpoint)
+//   hasCustomJwtSecret             (action input: has_custom_jwt_secret)
+//   containerAppsEnvironmentName   (action input: container_apps_environment_name)
+//
+// The following are overridden per deployment via --parameters on the CLI:
+//   name, registryServer, nordicContainerImageName/Tag, workerContainerImageName/Tag,
+//   appConfigLabel, wafPolicyId, dnsZoneResourceGroup
 // ============================================================
 
 using '../main.bicep'
@@ -27,24 +33,14 @@ param nordicContainerImageTag = 'latest'
 param workerContainerImageName = 'niscontainers.azurecr.io/worker'
 param workerContainerImageTag = 'latest'
 
-// ── Identity ──────────────────────────────────────────────────────────────────
-param userManagedIdentityName = 'GHAction'
-param userManagedIdentityResourceGroup = 'nc-internal-testops'
-
 // ── App Configuration ─────────────────────────────────────────────────────────
 param appConfigLabel = 'Feature-0000'
-param appConfigName = 'nis-developers-aac'
 
-// ── Elasticsearch ─────────────────────────────────────────────────────────────
-param useElastic8 = true
-param elastic8Endpoint = 'https://nis-virt-esdata-0.nisportal.com:9200'
-
-// ── Feature flags ─────────────────────────────────────────────────────────────
+// ── Feature flags (correct defaults for all feature environments) ─────────────
 param enablePlayground = true
 param enableUnsecurePlayground = true
 param superAdministratorMode = true
 param includeExceptionDetails = true
-param hasCustomJwtSecret = false
 
 // ── Front Door ────────────────────────────────────────────────────────────────
 param frontDoorName = 'fd-nisportal'
