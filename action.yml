@@ -26,8 +26,33 @@ inputs:
     description: Resource ID of the WAF policy to associate
     required: true
   dns_zone_resource_group:
-    description: Resource group containing the nisportal.com DNS zone
+    description: Resource group containing the cust.nisportal.com DNS zone
     required: true
+  user_managed_identity_name:
+    description: Name of the user-assigned managed identity used for ACR pull access on the Container Apps
+    required: true
+  user_managed_identity_resource_group:
+    description: Resource group where the user-assigned managed identity resides
+    required: true
+  app_config_name:
+    description: Name of the Azure App Configuration resource
+    required: true
+  use_elastic8:
+    description: Whether to enable Elastic 8 (true/false)
+    required: false
+    default: 'true'
+  elastic8_endpoint:
+    description: Elastic 8 endpoint URL (leave empty to disable)
+    required: false
+    default: ''
+  has_custom_jwt_secret:
+    description: Whether a custom JWT secret is configured in Key Vault for this environment (true/false)
+    required: false
+    default: 'false'
+  container_apps_environment_name:
+    description: Name of the shared Container Apps Environment
+    required: false
+    default: 'feature-environments'
 
 outputs:
   feature_url:
@@ -43,7 +68,7 @@ runs:
     - name: Ensure Container Apps Environment is running
       shell: bash
       run: |
-        ENV_NAME="feature-environments"
+        ENV_NAME="${{ inputs.container_apps_environment_name }}"
         RG="${{ inputs.resource_group }}"
 
         echo "Starting Container Apps Environment (idempotent)..."
@@ -85,6 +110,13 @@ runs:
             workerContainerImageName="${{ inputs.registry_server }}/worker" \
             workerContainerImageTag="${{ inputs.worker_image_tag }}" \
             appConfigLabel="Feature-${{ inputs.pr_id }}" \
+            userManagedIdentityName="${{ inputs.user_managed_identity_name }}" \
+            userManagedIdentityResourceGroup="${{ inputs.user_managed_identity_resource_group }}" \
+            appConfigName="${{ inputs.app_config_name }}" \
+            useElastic8="${{ inputs.use_elastic8 }}" \
+            elastic8Endpoint="${{ inputs.elastic8_endpoint }}" \
+            hasCustomJwtSecret="${{ inputs.has_custom_jwt_secret }}" \
+            containerAppsEnvironmentName="${{ inputs.container_apps_environment_name }}" \
             wafPolicyId="${{ inputs.waf_policy_id }}" \
             dnsZoneResourceGroup="${{ inputs.dns_zone_resource_group }}" \
           --query 'properties.outputs' -o json)
