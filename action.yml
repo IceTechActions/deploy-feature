@@ -40,11 +40,54 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Ensure Container Apps Environment is running
+      shell: bash
+      run: |
+        ENV_NAME="feature-environments"
+        RG="${{ inputs.resource_group }}"
+
+        echo "Starting Container Apps Environment (idempotent)..."
+        az containerapp env start \
+          --name "$ENV_NAME" \
+          --resource-group "$RG" \
+          --no-wait 2>/dev/null || true
+
+        echo "Waiting for environment to be ready..."
+        for i in $(seq 1 20); do
+          STATE=$(az containerapp env show \
+            --name "$ENV_NAME" \
+            --resource-group "$RG" \
+            --query "properties.provisioningState" -o tsv)
+          echo "  [$i/20] provisioningState: $STATE"
+          if [ "$STATE" = "Succeeded" ]; then
+            echo "Environment is ready."
+            exit 0
+          fi
+          sleep 30
+        done
+        echo "::error::Container Apps Environment did not become ready within 10 minutes."
+        exit 1
+
     - name: Deploy to Azure
       id: deploy
       shell: bash
       run: |
-        RESULT=$(az deployment group create           --name "deploy-${{ inputs.feature_name }}-$(date +%Y%m%d-%H%M%S)"           --resource-group "${{ inputs.resource_group }}"           --template-file "${{ github.action_path }}/main.bicep"           --parameters "${{ github.action_path }}/parameters/feature-environment.bicepparam"           --parameters             name="${{ inputs.feature_name }}"             registryServer="${{ inputs.registry_server }}"             nordicContainerImageName="${{ inputs.registry_server }}/nordic"             nordicContainerImageTag="${{ inputs.nordic_image_tag }}"             workerContainerImageName="${{ inputs.registry_server }}/worker"             workerContainerImageTag="${{ inputs.worker_image_tag }}"             appConfigLabel="Feature-${{ inputs.pr_id }}"             wafPolicyId="${{ inputs.waf_policy_id }}"             dnsZoneResourceGroup="${{ inputs.dns_zone_resource_group }}"           --query 'properties.outputs' -o json)
+        RESULT=$(az deployment group create \
+          --name "deploy-${{ inputs.feature_name }}-$(date +%Y%m%d-%H%M%S)" \
+          --resource-group "${{ inputs.resource_group }}" \
+          --template-file "${{ github.action_path }}/main.bicep" \
+          --parameters "${{ github.action_path }}/parameters/feature-environment.bicepparam" \
+          --parameters \
+            name="${{ inputs.feature_name }}" \
+            registryServer="${{ inputs.registry_server }}" \
+            nordicContainerImageName="${{ inputs.registry_server }}/nordic" \
+            nordicContainerImageTag="${{ inputs.nordic_image_tag }}" \
+            workerContainerImageName="${{ inputs.registry_server }}/worker" \
+            workerContainerImageTag="${{ inputs.worker_image_tag }}" \
+            appConfigLabel="Feature-${{ inputs.pr_id }}" \
+            wafPolicyId="${{ inputs.waf_policy_id }}" \
+            dnsZoneResourceGroup="${{ inputs.dns_zone_resource_group }}" \
+          --query 'properties.outputs' -o json)
 
         FD_URL=$(echo "$RESULT" | jq -r '.frontDoorUrl.value' | sed 's|https://||')
         echo "fd_hostname=$FD_URL" >> "$GITHUB_OUTPUT"
