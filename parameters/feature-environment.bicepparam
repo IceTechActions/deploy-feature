@@ -3,14 +3,9 @@
 // ============================================================
 // Used by main.bicep to deploy a feature environment.
 //
-// In CI/CD, most values are overridden via --parameters on the CLI:
-//   az deployment group create \
-//     --resource-group $RESOURCE_GROUP \
-//     --template-file main.bicep \
-//     --parameters parameters/feature-environment.bicepparam \
-//     --parameters name="feature-1234" \
-//                  nordicContainerImageTag="25.10.0-feature-1234" \
-//                  workerContainerImageTag="25.10.0-feature-1234"
+// Parameters marked "override via action input" have placeholder values here.
+// The deploy-feature action always passes the real values at deploy time via
+// --parameters on the CLI, sourced from GitHub repository variables.
 // ============================================================
 
 using '../main.bicep'
@@ -28,22 +23,31 @@ param workerContainerImageName = 'niscontainers.azurecr.io/worker'
 param workerContainerImageTag = 'latest'
 
 // ── Identity ──────────────────────────────────────────────────────────────────
-param userManagedIdentityName = 'GHAction'
-param userManagedIdentityResourceGroup = 'nc-internal-testops'
+// Override via action inputs user_managed_identity_name /
+// user_managed_identity_resource_group (GitHub vars: AZURE_FEATURE_MANAGED_IDENTITY,
+// MANAGED_IDENTITY_RESOURCE_GROUP).
+param userManagedIdentityName = ''
+param userManagedIdentityResourceGroup = ''
 
 // ── App Configuration ─────────────────────────────────────────────────────────
+// appConfigLabel is set at deploy time to "Feature-{pr_id}" (derived from the
+// feature environment name). Override via --parameters appConfigLabel="Feature-{pr_id}".
 param appConfigLabel = 'Feature-0000'
-param appConfigName = 'nis-developers-aac'
+// Override via action input app_config_name (GitHub var: AZURE_APP_CONFIG_NAME).
+param appConfigName = ''
 
 // ── Elasticsearch ─────────────────────────────────────────────────────────────
+// Override via action inputs use_elastic8 / elastic8_endpoint
+// (GitHub var: ELASTIC8_ENDPOINT).
 param useElastic8 = true
-param elastic8Endpoint = 'https://nis-virt-esdata-0.nisportal.com:9200'
+param elastic8Endpoint = ''
 
-// ── Feature flags ─────────────────────────────────────────────────────────────
+// ── Feature flags (correct defaults for all feature environments) ─────────────
 param enablePlayground = true
 param enableUnsecurePlayground = true
 param superAdministratorMode = true
 param includeExceptionDetails = true
+// Override via action input has_custom_jwt_secret when a JWT secret exists.
 param hasCustomJwtSecret = false
 
 // ── Front Door ────────────────────────────────────────────────────────────────
