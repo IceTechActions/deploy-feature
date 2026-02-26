@@ -19,9 +19,6 @@ inputs:
   worker_image_tag:
     description: Worker container image tag
     required: true
-  pr_id:
-    description: Pull request number (used for App Configuration label)
-    required: true
   waf_policy_id:
     description: Resource ID of the WAF policy to associate
     required: true
@@ -109,7 +106,7 @@ runs:
             nordicContainerImageTag="${{ inputs.nordic_image_tag }}" \
             workerContainerImageName="${{ inputs.registry_server }}/worker" \
             workerContainerImageTag="${{ inputs.worker_image_tag }}" \
-            appConfigLabel="Feature-${{ inputs.pr_id }}" \
+            appConfigLabel="Feature-$(echo '${{ inputs.feature_name }}' | sed 's/^feature-//')" \
             userManagedIdentityName="${{ inputs.user_managed_identity_name }}" \
             userManagedIdentityResourceGroup="${{ inputs.user_managed_identity_resource_group }}" \
             appConfigName="${{ inputs.app_config_name }}" \
