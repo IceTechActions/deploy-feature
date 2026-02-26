@@ -3,20 +3,9 @@
 // ============================================================
 // Used by main.bicep to deploy a feature environment.
 //
-// The following parameters have NO defaults here and MUST be supplied
-// as inputs to the deploy-feature action (which passes them via --parameters):
-//
-//   userManagedIdentityName        (action input: user_managed_identity_name)
-//   userManagedIdentityResourceGroup (action input: user_managed_identity_resource_group)
-//   appConfigName                  (action input: app_config_name)
-//   useElastic8                    (action input: use_elastic8)
-//   elastic8Endpoint               (action input: elastic8_endpoint)
-//   hasCustomJwtSecret             (action input: has_custom_jwt_secret)
-//   containerAppsEnvironmentName   (action input: container_apps_environment_name)
-//
-// The following are overridden per deployment via --parameters on the CLI:
-//   name, registryServer, nordicContainerImageName/Tag, workerContainerImageName/Tag,
-//   appConfigLabel, wafPolicyId, dnsZoneResourceGroup
+// Parameters marked "override via action input" have placeholder values here.
+// The deploy-feature action always passes the real values at deploy time via
+// --parameters on the CLI, sourced from GitHub repository variables.
 // ============================================================
 
 using '../main.bicep'
@@ -33,14 +22,31 @@ param nordicContainerImageTag = 'latest'
 param workerContainerImageName = 'niscontainers.azurecr.io/worker'
 param workerContainerImageTag = 'latest'
 
+// ── Identity ──────────────────────────────────────────────────────────────────
+// Override via action inputs user_managed_identity_name /
+// user_managed_identity_resource_group (GitHub vars: AZURE_FEATURE_MANAGED_IDENTITY,
+// MANAGED_IDENTITY_RESOURCE_GROUP).
+param userManagedIdentityName = ''
+param userManagedIdentityResourceGroup = ''
+
 // ── App Configuration ─────────────────────────────────────────────────────────
 param appConfigLabel = 'Feature-0000'
+// Override via action input app_config_name (GitHub var: AZURE_APP_CONFIG_NAME).
+param appConfigName = ''
+
+// ── Elasticsearch ─────────────────────────────────────────────────────────────
+// Override via action inputs use_elastic8 / elastic8_endpoint
+// (GitHub var: ELASTIC8_ENDPOINT).
+param useElastic8 = true
+param elastic8Endpoint = ''
 
 // ── Feature flags (correct defaults for all feature environments) ─────────────
 param enablePlayground = true
 param enableUnsecurePlayground = true
 param superAdministratorMode = true
 param includeExceptionDetails = true
+// Override via action input has_custom_jwt_secret when a JWT secret exists.
+param hasCustomJwtSecret = false
 
 // ── Front Door ────────────────────────────────────────────────────────────────
 param frontDoorName = 'fd-nisportal'
