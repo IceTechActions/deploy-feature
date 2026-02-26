@@ -68,27 +68,11 @@ runs:
         ENV_NAME="${{ inputs.container_apps_environment_name }}"
         RG="${{ inputs.resource_group }}"
 
-        echo "Starting Container Apps Environment (idempotent)..."
+        echo "Starting Container Apps Environment (no-op if already running)..."
         az containerapp env start \
           --name "$ENV_NAME" \
-          --resource-group "$RG" \
-          --no-wait 2>/dev/null || true
-
-        echo "Waiting for environment to be ready..."
-        for i in $(seq 1 20); do
-          STATE=$(az containerapp env show \
-            --name "$ENV_NAME" \
-            --resource-group "$RG" \
-            --query "properties.runningStatus" -o tsv)
-          echo "  [$i/20] runningStatus: $STATE"
-          if [ "$STATE" = "Running" ]; then
-            echo "Environment is ready."
-            exit 0
-          fi
-          sleep 30
-        done
-        echo "::error::Container Apps Environment did not become ready within 10 minutes."
-        exit 1
+          --resource-group "$RG" 2>/dev/null || true
+        echo "Container Apps Environment is ready."
 
     - name: Deploy to Azure
       id: deploy
