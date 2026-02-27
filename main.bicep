@@ -513,6 +513,7 @@ resource fdRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2025-06-01' = {
     linkToDefaultDomain: 'Enabled'
     enabledState: 'Enabled'
   }
+  dependsOn: [fdOrigin] // ensure origin is provisioned before route references the origin group
 }
 
 // WAF policy association for this feature environment's domain
