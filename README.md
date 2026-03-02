@@ -18,16 +18,23 @@ The action bundles `main.bicep` and `parameters/feature-environment.bicepparam` 
 
 ## Inputs
 
-| Input | Required | Description |
-|-------|----------|-------------|
-| `feature_name` | Yes | Feature environment name, e.g. `feature-1234`. Used as a prefix for all resource names. |
-| `resource_group` | Yes | Azure resource group to deploy into |
-| `registry_server` | Yes | Container registry login server, e.g. `niscontainers.azurecr.io` |
-| `nordic_image_tag` | Yes | Tag of the Nordic container image to deploy |
-| `worker_image_tag` | Yes | Tag of the Worker container image to deploy |
-| `pr_id` | Yes | Pull request number — sets the App Configuration label to `Feature-{pr_id}` |
-| `waf_policy_id` | Yes | Full resource ID of the WAF policy to associate with the custom domain |
-| `dns_zone_resource_group` | Yes | Resource group containing the `nisportal.com` DNS zone (used for Front Door custom domain validation) |
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `feature_name` | Yes | — | Feature environment name, e.g. `feature-1234`. Used as a prefix for all resource names. |
+| `resource_group` | Yes | — | Azure resource group to deploy into |
+| `registry_server` | Yes | — | Container registry login server, e.g. `niscontainers.azurecr.io` |
+| `nordic_image_tag` | Yes | — | Tag of the Nordic container image to deploy |
+| `worker_image_tag` | Yes | — | Tag of the Worker container image to deploy |
+| `waf_policy_id` | Yes | — | Full resource ID of the WAF policy to associate with the custom domain |
+| `dns_zone_resource_group` | Yes | — | Resource group containing the `cust.nisportal.com` DNS zone |
+| `user_managed_identity_name` | Yes | — | Name of the user-assigned managed identity used for ACR pull access on the Container Apps |
+| `user_managed_identity_resource_group` | Yes | — | Resource group where the user-assigned managed identity resides |
+| `app_config_name` | Yes | — | Name of the Azure App Configuration resource |
+| `use_elastic8` | No | `true` | Whether to enable Elastic 8 (`true`/`false`) |
+| `elastic8_endpoint` | No | `''` | Elastic 8 endpoint URL (leave empty to disable) |
+| `has_custom_jwt_secret` | No | `false` | Whether a custom JWT secret is configured in Key Vault for this environment |
+| `container_apps_environment_name` | No | `feature-environments` | Name of the shared Container Apps Environment |
+| `front_door_name` | No | `fd-nisportal` | Name of the shared Azure Front Door profile |
 
 ## Outputs
 
@@ -55,9 +62,11 @@ The action bundles `main.bicep` and `parameters/feature-environment.bicepparam` 
     registry_server: niscontainers.azurecr.io
     nordic_image_tag: 25.10.0-feature-1234
     worker_image_tag: 25.10.0-feature-1234
-    pr_id: 1234
     waf_policy_id: /subscriptions/.../providers/Microsoft.Network/frontDoorWebApplicationFirewallPolicies/myWafPolicy
     dns_zone_resource_group: my-dns-rg
+    user_managed_identity_name: my-acr-pull-identity
+    user_managed_identity_resource_group: my-identity-rg
+    app_config_name: my-app-config
 
 - name: Create DNS CNAME
   uses: IceTechActions/create-dns-cname@v1
@@ -66,3 +75,13 @@ The action bundles `main.bicep` and `parameters/feature-environment.bicepparam` 
     fd_hostname: ${{ steps.deploy.outputs.fd_hostname }}
     dns_zone_resource_group: my-dns-rg
 ```
+
+## Behaviour
+
+### Front Door propagation polling
+
+After the Bicep deployment completes, the action runs a **"Wait for Front Door configuration to propagate"** step. This step polls the AFD endpoint and route `deploymentStatus` every 30 seconds until both reach `Succeeded`, ensuring the environment is actually reachable before the job moves on.
+
+- **Timeout:** 10 minutes (600 s). If propagation has not completed by then, the step emits a `::warning::` annotation and exits — the site may not be immediately accessible, but the deployment itself succeeded.
+- **Why this matters:** Front Door changes can take several minutes to distribute to all points of presence. Without this wait, DNS and routing may not be active yet when downstream steps (e.g. smoke tests) run.
+- **Skipping:** There is no skip option. If you need to bypass the wait, set `front_door_name` to an endpoint name that resolves immediately, or accept the warning and add a manual delay in your workflow instead.
