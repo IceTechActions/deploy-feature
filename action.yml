@@ -50,6 +50,10 @@ inputs:
     description: Name of the shared Container Apps Environment
     required: false
     default: 'feature-environments'
+  front_door_name:
+    description: Name of the shared Azure Front Door profile
+    required: false
+    default: 'fd-nisportal'
 
 outputs:
   feature_url:
@@ -105,3 +109,34 @@ runs:
         FD_URL=$(echo "$RESULT" | jq -r '.frontDoorUrl.value' | sed 's|https://||')
         echo "fd_hostname=$FD_URL" >> "$GITHUB_OUTPUT"
         echo "feature_url=$(echo "$RESULT" | jq -r '.featureUrl.value')" >> "$GITHUB_OUTPUT"
+
+    - name: Wait for Front Door configuration to propagate
+      shell: bash
+      run: |
+        FEATURE="${{ inputs.feature_name }}"
+        RG="${{ inputs.resource_group }}"
+        FD="${{ inputs.front_door_name }}"
+        TIMEOUT=600
+        ELAPSED=0
+        echo "Waiting for AFD endpoint and route to propagate to PoPs (timeout: ${TIMEOUT}s)..."
+        while [ $ELAPSED -lt $TIMEOUT ]; do
+          EP=$(az afd endpoint show \
+            --profile-name "$FD" \
+            --resource-group "$RG" \
+            --endpoint-name "$FEATURE" \
+            --query deploymentStatus -o tsv 2>/dev/null || echo "Unknown")
+          RT=$(az afd route show \
+            --profile-name "$FD" \
+            --resource-group "$RG" \
+            --endpoint-name "$FEATURE" \
+            --route-name default \
+            --query deploymentStatus -o tsv 2>/dev/null || echo "Unknown")
+          echo "  endpoint=$EP  route=$RT  (${ELAPSED}s elapsed)"
+          if [ "$EP" = "Succeeded" ] && [ "$RT" = "Succeeded" ]; then
+            echo "Front Door configuration propagated successfully."
+            exit 0
+          fi
+          sleep 30
+          ELAPSED=$((ELAPSED + 30))
+        done
+        echo "::warning::AFD propagation did not complete within ${TIMEOUT}s — the site may not be accessible immediately"
