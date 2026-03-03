@@ -46,6 +46,25 @@ inputs:
     description: Whether a custom JWT secret is configured in Key Vault for this environment (true/false)
     required: false
     default: 'false'
+  keyvault_name:
+    description: Key Vault name where feature secrets are stored
+    required: true
+  sql_server:
+    description: SQL server hostname for the feature database connection string
+    required: true
+  sql_user_name:
+    description: Feature SQL login name
+    required: true
+  sql_user_password:
+    description: SQL login password (sensitive)
+    required: true
+  jwt_secret:
+    description: JWT secret value (sensitive)
+    required: true
+  is_pr_check:
+    description: Skip secret-setting when 'true' (PR check redeployment)
+    required: false
+    default: 'false'
   container_apps_environment_name:
     description: Name of the shared Container Apps Environment
     required: false
@@ -66,6 +85,27 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Set Key Vault and App Config secrets
+      if: inputs.is_pr_check != 'true'
+      shell: bash
+      env:
+        KEYVAULT_NAME: ${{ inputs.keyvault_name }}
+        SQL_SERVER: ${{ inputs.sql_server }}
+        SQL_USER_NAME: ${{ inputs.sql_user_name }}
+        SQL_USER_PASSWORD: ${{ inputs.sql_user_password }}
+        JWT_SECRET: ${{ inputs.jwt_secret }}
+        APP_CONFIG_NAME: ${{ inputs.app_config_name }}
+      run: |
+        PR_ID=$(echo "${{ inputs.feature_name }}" | sed 's/^feature-//')
+        bash "${{ github.action_path }}/scripts/set-secrets.sh" \
+          "$KEYVAULT_NAME" \
+          "$PR_ID" \
+          "$SQL_SERVER" \
+          "$SQL_USER_NAME" \
+          "$SQL_USER_PASSWORD" \
+          "$JWT_SECRET" \
+          "$APP_CONFIG_NAME"
+
     - name: Ensure Container Apps Environment is running
       shell: bash
       run: |
