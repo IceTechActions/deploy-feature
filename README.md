@@ -32,6 +32,7 @@ The action bundles `main.bicep` and `parameters/feature-environment.bicepparam` 
 | `app_config_name` | Yes | — | Name of the Azure App Configuration resource |
 | `use_elastic8` | No | `true` | Whether to enable Elastic 8 (`true`/`false`) |
 | `elastic8_endpoint` | No | `''` | Elastic 8 endpoint URL (leave empty to disable) |
+| `dns_zone_name` | No | `cust.nisportal.com` | DNS zone name used to construct the AFD custom domain resource name |
 | `keyvault_name` | Yes | — | Key Vault name where feature secrets are stored |
 | `sql_server` | Yes | — | SQL server hostname for the feature database connection string |
 | `sql_user_name` | Yes | — | Feature SQL login name |
@@ -85,8 +86,10 @@ The action bundles `main.bicep` and `parameters/feature-environment.bicepparam` 
 
 ### Front Door propagation polling
 
-After the Bicep deployment completes, the action runs a **"Wait for Front Door configuration to propagate"** step. This step polls the AFD endpoint and route `deploymentStatus` every 30 seconds until both reach `Succeeded`, ensuring the environment is actually reachable before the job moves on.
+After the Bicep deployment completes, the action runs a **"Wait for Front Door custom domain certificate to be ready"** step. This step polls the AFD custom domain resource every 30 seconds until both `domainValidationState == Approved` and `provisioningState == Succeeded`, confirming that the managed TLS certificate has been issued and HTTPS is live.
 
-- **Timeout:** 10 minutes (600 s). If propagation has not completed by then, the step emits a `::warning::` annotation and exits — the site may not be immediately accessible, but the deployment itself succeeded.
-- **Why this matters:** Front Door changes can take several minutes to distribute to all points of presence. Without this wait, DNS and routing may not be active yet when downstream steps (e.g. smoke tests) run.
-- **Skipping:** There is no skip option. If you need to bypass the wait, set `front_door_name` to an endpoint name that resolves immediately, or accept the warning and add a manual delay in your workflow instead.
+The custom domain resource name is derived from the feature name and DNS zone: `${feature_name}-${dns_zone_name}` with dots replaced by hyphens (e.g. `feature-1234-cust-nisportal-com`), matching the Bicep `replace()` call in `main.bicep`.
+
+- **Timeout:** 30 minutes (1800 s). Fresh deployments typically complete in 5–15 minutes as Azure provisions the managed certificate. Redeployments of existing environments exit at the first poll iteration (0 s elapsed) since the cert is already `Approved`/`Succeeded`.
+- **Why this matters:** The `domainValidationState` and `provisioningState` fields on the custom domain resource are the correct signal for HTTPS readiness. The previously used `deploymentStatus` on the endpoint and route resources reflects internal AFD PoP sync, which can remain `NotStarted` indefinitely even when the site is fully reachable.
+- **Skipping:** There is no skip option. If you need to bypass the wait, accept the warning and add a manual delay in your workflow instead.
