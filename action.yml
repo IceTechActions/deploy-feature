@@ -42,8 +42,24 @@ inputs:
     description: Elastic 8 endpoint URL (leave empty to disable)
     required: false
     default: ''
-  has_custom_jwt_secret:
-    description: Whether a custom JWT secret is configured in Key Vault for this environment (true/false)
+  keyvault_name:
+    description: Key Vault name where feature secrets are stored
+    required: true
+  sql_server:
+    description: SQL server hostname for the feature database connection string
+    required: true
+  sql_user_name:
+    description: Feature SQL login name
+    required: true
+  sql_user_password:
+    description: SQL login password (sensitive — pass via secrets context)
+    required: true
+  jwt_secret:
+    description: JWT secret value (sensitive — pass via secrets context). Leave empty if no custom secret is available.
+    required: false
+    default: ''
+  is_pr_check:
+    description: Skip secret-setting when 'true' (PR check redeployment)
     required: false
     default: 'false'
   container_apps_environment_name:
@@ -66,6 +82,27 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Set Key Vault and App Config secrets
+      if: inputs.is_pr_check != 'true'
+      shell: bash
+      env:
+        KEYVAULT_NAME: ${{ inputs.keyvault_name }}
+        SQL_SERVER: ${{ inputs.sql_server }}
+        SQL_USER_NAME: ${{ inputs.sql_user_name }}
+        SQL_USER_PASSWORD: ${{ inputs.sql_user_password }}
+        JWT_SECRET: ${{ inputs.jwt_secret }}
+        APP_CONFIG_NAME: ${{ inputs.app_config_name }}
+      run: |
+        PR_ID=$(echo "${{ inputs.feature_name }}" | sed 's/^feature-//')
+        bash "${{ github.action_path }}/scripts/set-secrets.sh" \
+          "$KEYVAULT_NAME" \
+          "$PR_ID" \
+          "$SQL_SERVER" \
+          "$SQL_USER_NAME" \
+          "$SQL_USER_PASSWORD" \
+          "$JWT_SECRET" \
+          "$APP_CONFIG_NAME"
+
     - name: Ensure Container Apps Environment is running
       shell: bash
       run: |
@@ -100,7 +137,7 @@ runs:
             appConfigName="${{ inputs.app_config_name }}" \
             useElastic8="${{ inputs.use_elastic8 }}" \
             elastic8Endpoint="${{ inputs.elastic8_endpoint }}" \
-            hasCustomJwtSecret="${{ inputs.has_custom_jwt_secret }}" \
+            hasCustomJwtSecret="${{ inputs.jwt_secret != '' }}" \
             containerAppsEnvironmentName="${{ inputs.container_apps_environment_name }}" \
             wafPolicyId="${{ inputs.waf_policy_id }}" \
             dnsZoneResourceGroup="${{ inputs.dns_zone_resource_group }}" \
