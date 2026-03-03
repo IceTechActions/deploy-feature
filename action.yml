@@ -42,10 +42,6 @@ inputs:
     description: Elastic 8 endpoint URL (leave empty to disable)
     required: false
     default: ''
-  has_custom_jwt_secret:
-    description: Whether a custom JWT secret is configured in Key Vault for this environment (true/false)
-    required: false
-    default: 'false'
   keyvault_name:
     description: Key Vault name where feature secrets are stored
     required: true
@@ -56,11 +52,12 @@ inputs:
     description: Feature SQL login name
     required: true
   sql_user_password:
-    description: SQL login password (sensitive)
+    description: SQL login password (sensitive — pass via secrets context)
     required: true
   jwt_secret:
-    description: JWT secret value (sensitive)
-    required: true
+    description: JWT secret value (sensitive — pass via secrets context). Leave empty if no custom secret is available.
+    required: false
+    default: ''
   is_pr_check:
     description: Skip secret-setting when 'true' (PR check redeployment)
     required: false
@@ -140,7 +137,7 @@ runs:
             appConfigName="${{ inputs.app_config_name }}" \
             useElastic8="${{ inputs.use_elastic8 }}" \
             elastic8Endpoint="${{ inputs.elastic8_endpoint }}" \
-            hasCustomJwtSecret="${{ inputs.has_custom_jwt_secret }}" \
+            hasCustomJwtSecret="${{ inputs.jwt_secret != '' }}" \
             containerAppsEnvironmentName="${{ inputs.container_apps_environment_name }}" \
             wafPolicyId="${{ inputs.waf_policy_id }}" \
             dnsZoneResourceGroup="${{ inputs.dns_zone_resource_group }}" \

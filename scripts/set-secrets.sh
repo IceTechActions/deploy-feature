@@ -65,20 +65,22 @@ az appconfig kv set-keyvault -n "$APP_CONFIG_NAME" \
   --label "Feature-$PR_ID" \
   --secret-identifier "$base_uri" --yes
 
-# Set JWT secret
-secret_identifier=$(az keyvault secret set --vault-name "$KEYVAULT_NAME" \
-  --name "Feature-$PR_ID-JwtSecret" \
-  --value "$JWT_SECRET_NAME" \
-  --query id -o tsv)
+# Set JWT secret (only if provided)
+if [ -n "$JWT_SECRET_NAME" ]; then
+  secret_identifier=$(az keyvault secret set --vault-name "$KEYVAULT_NAME" \
+    --name "Feature-$PR_ID-JwtSecret" \
+    --value "$JWT_SECRET_NAME" \
+    --query id -o tsv)
 
-base_uri=$(get_base_uri "$secret_identifier")
+  base_uri=$(get_base_uri "$secret_identifier")
 
-az appconfig kv set-keyvault -n "$APP_CONFIG_NAME" \
-  --key Security:Jwt:Secret \
-  --label "Feature-$PR_ID" \
-  --secret-identifier "$base_uri" --yes
-# we need to set the Secret key as well for compatibility
-az appconfig kv set-keyvault -n "$APP_CONFIG_NAME" \
-  --key Secret \
-  --label "Feature-$PR_ID" \
-  --secret-identifier "$base_uri" --yes
+  az appconfig kv set-keyvault -n "$APP_CONFIG_NAME" \
+    --key Security:Jwt:Secret \
+    --label "Feature-$PR_ID" \
+    --secret-identifier "$base_uri" --yes
+  # we need to set the Secret key as well for compatibility
+  az appconfig kv set-keyvault -n "$APP_CONFIG_NAME" \
+    --key Secret \
+    --label "Feature-$PR_ID" \
+    --secret-identifier "$base_uri" --yes
+fi
