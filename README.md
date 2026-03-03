@@ -32,12 +32,11 @@ The action bundles `main.bicep` and `parameters/feature-environment.bicepparam` 
 | `app_config_name` | Yes | — | Name of the Azure App Configuration resource |
 | `use_elastic8` | No | `true` | Whether to enable Elastic 8 (`true`/`false`) |
 | `elastic8_endpoint` | No | `''` | Elastic 8 endpoint URL (leave empty to disable) |
-| `has_custom_jwt_secret` | No | `false` | Whether a custom JWT secret is configured in Key Vault for this environment |
 | `keyvault_name` | Yes | — | Key Vault name where feature secrets are stored |
 | `sql_server` | Yes | — | SQL server hostname for the feature database connection string |
 | `sql_user_name` | Yes | — | Feature SQL login name |
 | `sql_user_password` | Yes | — | SQL login password (sensitive) |
-| `jwt_secret` | Yes | — | JWT secret value (sensitive) |
+| `jwt_secret` | No | `''` | JWT secret value (sensitive). When provided, the secret is written to Key Vault and `hasCustomJwtSecret` is set to `true` for the Bicep deployment. Omit (or leave empty) when no custom JWT secret is needed. |
 | `is_pr_check` | No | `false` | Skip secret-setting when `'true'` (PR check redeployment) |
 | `container_apps_environment_name` | No | `feature-environments` | Name of the shared Container Apps Environment |
 | `front_door_name` | No | `fd-nisportal` | Name of the shared Azure Front Door profile |
