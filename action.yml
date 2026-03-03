@@ -42,6 +42,10 @@ inputs:
     description: Elastic 8 endpoint URL (leave empty to disable)
     required: false
     default: ''
+  dns_zone_name:
+    description: DNS zone name used to construct the custom domain resource name
+    required: false
+    default: 'cust.nisportal.com'
   keyvault_name:
     description: Key Vault name where feature secrets are stored
     required: true
@@ -147,33 +151,33 @@ runs:
         echo "fd_hostname=$FD_URL" >> "$GITHUB_OUTPUT"
         echo "feature_url=$(echo "$RESULT" | jq -r '.featureUrl.value')" >> "$GITHUB_OUTPUT"
 
-    - name: Wait for Front Door configuration to propagate
+    - name: Wait for Front Door custom domain certificate to be ready
       shell: bash
       run: |
         FEATURE="${{ inputs.feature_name }}"
         RG="${{ inputs.resource_group }}"
         FD="${{ inputs.front_door_name }}"
-        TIMEOUT=600
+        DNS_ZONE="${{ inputs.dns_zone_name }}"
+        # Derive the custom domain resource name — mirrors the Bicep replace() call
+        CUSTOM_DOMAIN_NAME=$(echo "${FEATURE}-${DNS_ZONE}" | sed 's/\./-/g')
+        TIMEOUT=1800
         ELAPSED=0
-        echo "Waiting for AFD endpoint and route to propagate to PoPs (timeout: ${TIMEOUT}s)..."
+        echo "Waiting for AFD custom domain '${CUSTOM_DOMAIN_NAME}' cert to be ready (timeout: ${TIMEOUT}s)..."
         while [ $ELAPSED -lt $TIMEOUT ]; do
-          EP=$(az afd endpoint show \
+          RESULT=$(az afd custom-domain show \
             --profile-name "$FD" \
             --resource-group "$RG" \
-            --endpoint-name "$FEATURE" \
-            --query deploymentStatus -o tsv 2>/dev/null || echo "Unknown")
-          RT=$(az afd route show \
-            --profile-name "$FD" \
-            --resource-group "$RG" \
-            --endpoint-name "$FEATURE" \
-            --route-name default \
-            --query deploymentStatus -o tsv 2>/dev/null || echo "Unknown")
-          echo "  endpoint=$EP  route=$RT  (${ELAPSED}s elapsed)"
-          if [ "$EP" = "Succeeded" ] && [ "$RT" = "Succeeded" ]; then
-            echo "Front Door configuration propagated successfully."
+            --custom-domain-name "$CUSTOM_DOMAIN_NAME" \
+            --query '{validationState:domainValidationState,provisioningState:provisioningState}' \
+            -o json 2>/dev/null || echo '{}')
+          VS=$(echo "$RESULT" | jq -r '.validationState // "Unknown"')
+          PS=$(echo "$RESULT" | jq -r '.provisioningState // "Unknown"')
+          echo "  domainValidationState=$VS  provisioningState=$PS  (${ELAPSED}s elapsed)"
+          if [ "$VS" = "Approved" ] && [ "$PS" = "Succeeded" ]; then
+            echo "Custom domain certificate is ready. Front Door is serving HTTPS."
             exit 0
           fi
           sleep 30
           ELAPSED=$((ELAPSED + 30))
         done
-        echo "::warning::AFD propagation did not complete within ${TIMEOUT}s — the site may not be accessible immediately"
+        echo "::warning::AFD custom domain cert did not reach Approved/Succeeded within ${TIMEOUT}s — HTTPS may not be active yet"
