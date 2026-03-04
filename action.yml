@@ -151,33 +151,3 @@ runs:
         echo "fd_hostname=$FD_URL" >> "$GITHUB_OUTPUT"
         echo "feature_url=$(echo "$RESULT" | jq -r '.featureUrl.value')" >> "$GITHUB_OUTPUT"
 
-    - name: Wait for Front Door custom domain certificate to be ready
-      shell: bash
-      run: |
-        FEATURE="${{ inputs.feature_name }}"
-        RG="${{ inputs.resource_group }}"
-        FD="${{ inputs.front_door_name }}"
-        DNS_ZONE="${{ inputs.dns_zone_name }}"
-        # Derive the custom domain resource name — mirrors the Bicep replace() call
-        CUSTOM_DOMAIN_NAME=$(echo "${FEATURE}-${DNS_ZONE}" | sed 's/\./-/g')
-        TIMEOUT=1800
-        ELAPSED=0
-        echo "Waiting for AFD custom domain '${CUSTOM_DOMAIN_NAME}' cert to be ready (timeout: ${TIMEOUT}s)..."
-        while [ $ELAPSED -lt $TIMEOUT ]; do
-          RESULT=$(az afd custom-domain show \
-            --profile-name "$FD" \
-            --resource-group "$RG" \
-            --custom-domain-name "$CUSTOM_DOMAIN_NAME" \
-            --query '{validationState:domainValidationState,provisioningState:provisioningState}' \
-            -o json 2>/dev/null || echo '{}')
-          VS=$(echo "$RESULT" | jq -r '.validationState // "Unknown"')
-          PS=$(echo "$RESULT" | jq -r '.provisioningState // "Unknown"')
-          echo "  domainValidationState=$VS  provisioningState=$PS  (${ELAPSED}s elapsed)"
-          if [ "$VS" = "Approved" ] && [ "$PS" = "Succeeded" ]; then
-            echo "Custom domain certificate is ready. Front Door is serving HTTPS."
-            exit 0
-          fi
-          sleep 30
-          ELAPSED=$((ELAPSED + 30))
-        done
-        echo "::warning::AFD custom domain cert did not reach Approved/Succeeded within ${TIMEOUT}s — HTTPS may not be active yet"
