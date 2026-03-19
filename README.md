@@ -6,7 +6,9 @@ Deploys a per-feature Azure environment consisting of:
 - **HttpRouteConfig** — path-based routing at the Container Apps Environment level; routes `/worker/*` to the Worker and `/*` to Nordic
 - **Per-feature Hangfire storage** — a dedicated Storage Account and file share, mounted into the Worker container at `/aci/storage/hangfire`
 - **Application Insights** — per-feature `{name}-application-insights`
-- **Front Door endpoint, origin group, origin, custom domain, route, WAF association** — exposes the environment at `https://{name}.cust.nisportal.com`
+- **Front Door endpoint, origin group, origin, custom domain, and route** — exposes the environment at `https://{name}.cust.nisportal.com`
+
+After the Bicep deployment the action calls the shared [`IceTechActions/front-door-waf-domain`](https://github.com/IceTechActions/front-door-waf-domain) action to associate the new custom domain with the shared WAF security policy. This avoids the Azure AFD restriction that only one security policy may exist per WAF policy per Front Door profile.
 
 The action bundles `main.bicep` and `parameters/feature-environment.bicepparam` — the calling repo does not need any Bicep files.
 
@@ -25,7 +27,7 @@ The action bundles `main.bicep` and `parameters/feature-environment.bicepparam` 
 | `registry_server` | Yes | — | Container registry login server, e.g. `niscontainers.azurecr.io` |
 | `nordic_image_tag` | Yes | — | Tag of the Nordic container image to deploy |
 | `worker_image_tag` | Yes | — | Tag of the Worker container image to deploy |
-| `waf_policy_id` | Yes | — | Full resource ID of the WAF policy to associate with the custom domain |
+| `waf_policy_id` | Yes | — | Full resource ID of the WAF policy. Passed to the shared `front-door-waf-domain` action to add the custom domain to the shared security policy. |
 | `dns_zone_resource_group` | Yes | — | Resource group containing the `cust.nisportal.com` DNS zone |
 | `user_managed_identity_name` | Yes | — | Name of the user-assigned managed identity used for ACR pull access on the Container Apps |
 | `user_managed_identity_resource_group` | Yes | — | Resource group where the user-assigned managed identity resides |
@@ -83,6 +85,10 @@ The action bundles `main.bicep` and `parameters/feature-environment.bicepparam` 
 ```
 
 ## Behaviour
+
+### WAF domain association
+
+After the Bicep deployment, the action calls [`IceTechActions/front-door-waf-domain`](https://github.com/IceTechActions/front-door-waf-domain) to add the new custom domain to the shared WAF security policy (identified by `waf_policy_id`). Azure AFD allows only **one** security policy per WAF policy per Front Door profile; the shared action manages that single security policy and safely adds individual domain associations, making concurrent environment deployments safe.
 
 ### Front Door propagation polling
 
