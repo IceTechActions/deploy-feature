@@ -92,10 +92,12 @@ After the Bicep deployment, the action calls [`IceTechActions/front-door-waf-dom
 
 ### Front Door propagation polling
 
-After the Bicep deployment completes, the action runs a **"Wait for Front Door custom domain certificate to be ready"** step. This step polls the AFD custom domain resource every 30 seconds until both `domainValidationState == Approved` and `provisioningState == Succeeded`, confirming that the managed TLS certificate has been issued and HTTPS is live.
+This action **does not** wait for the Front Door custom domain certificate to be ready. After the Bicep deployment (and WAF association) completes, the workflow continues immediately.
+
+If you need to wait for HTTPS/TLS to be live, add a separate step in your workflow that polls the AFD custom domain resource every 30 seconds until both `domainValidationState == Approved` and `provisioningState == Succeeded`, confirming that the managed certificate has been issued.
 
 The custom domain resource name is derived from the feature name and DNS zone: `${feature_name}-${dns_zone_name}` with dots replaced by hyphens (e.g. `feature-1234-cust-nisportal-com`), matching the Bicep `replace()` call in `main.bicep`.
 
-- **Timeout:** 30 minutes (1800 s). Fresh deployments typically complete in 5–15 minutes as Azure provisions the managed certificate. Redeployments of existing environments exit at the first poll iteration (0 s elapsed) since the cert is already `Approved`/`Succeeded`.
+- **Recommended timeout:** 30 minutes (1800 s). Fresh deployments typically complete in 5–15 minutes as Azure provisions the managed certificate. Redeployments of existing environments typically exit at the first poll iteration (0 s elapsed) since the cert is already `Approved`/`Succeeded`.
 - **Why this matters:** The `domainValidationState` and `provisioningState` fields on the custom domain resource are the correct signal for HTTPS readiness. The previously used `deploymentStatus` on the endpoint and route resources reflects internal AFD PoP sync, which can remain `NotStarted` indefinitely even when the site is fully reachable.
-- **Skipping:** There is no skip option. If you need to bypass the wait, accept the warning and add a manual delay in your workflow instead.
+- **Skipping:** If you choose not to implement this polling step, be aware that the endpoint may not have HTTPS ready immediately after deployment; add a manual delay or accept potential transient HTTPS failures.
