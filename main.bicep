@@ -78,9 +78,6 @@ param hasCustomJwtSecret bool = false
 @description('Name of the shared Azure Front Door profile.')
 param frontDoorName string = 'fd-nisportal'
 
-@description('Resource ID of the WAF policy to associate with this feature environment.')
-param wafPolicyId string
-
 @description('Resource group containing the nisportal.com DNS zone.')
 param dnsZoneResourceGroup string
 
@@ -514,28 +511,6 @@ resource fdRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2025-06-01' = {
     enabledState: 'Enabled'
   }
   dependsOn: [fdOrigin] // ensure origin is provisioned before route references the origin group
-}
-
-// WAF policy association for this feature environment's domain
-resource fdSecurityPolicy 'Microsoft.Cdn/profiles/securityPolicies@2025-06-01' = {
-  parent: frontDoor
-  name: '${name}-waf'
-  properties: {
-    parameters: {
-      type: 'WebApplicationFirewall'
-      wafPolicy: {
-        id: wafPolicyId
-      }
-      associations: [
-        {
-          domains: [
-            { id: fdCustomDomain.id }
-          ]
-          patternsToMatch: ['/*']
-        }
-      ]
-    }
-  }
 }
 
 // ── Outputs ───────────────────────────────────────────────────────────────────
