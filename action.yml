@@ -160,7 +160,7 @@ runs:
         echo "custom_domain_id=${DOMAIN_ID}" >> "$GITHUB_OUTPUT"
 
     - name: Associate custom domain with WAF security policy
-      uses: IceTechActions/front-door-waf-domain@8f553b7bfb1a14a1c7962f19701ad872f341285a # v1
+      uses: IceTechActions/front-door-waf-domain@f27332454bb910e4287fe594cc8ba08763a4259e # v1.0.0
       with:
         profile_name: ${{ inputs.front_door_name }}
         resource_group: ${{ inputs.resource_group }}
